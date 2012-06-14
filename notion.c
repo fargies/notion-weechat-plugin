@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "weechat-plugin.h"
 
@@ -72,6 +73,7 @@ static void notion_update(uint16_t count)
 {
     char data[17];
     int len;
+    int ret;
 
     if (notion.sock < 0)
         return;
@@ -79,18 +81,26 @@ static void notion_update(uint16_t count)
     len = snprintf(data, 17, "irc: %u\n", count);
 
     if (len > 0)
-        sendto(notion.sock, data, len, 0,
+    {
+        ret = sendto(notion.sock, data, len, MSG_DONTWAIT,
                 (const struct sockaddr *) &(notion.addr),
                 sizeof (notion.addr));
+        if (ret < 0)
+            weechat_printf(NULL, "%snotion: %s(%i)", weechat_prefix("error"),
+                    strerror(errno), errno);
+    }
 
     if (count > 0)
-        sendto(notion.sock, "irc_hint: important\n", 20, 0,
+        ret = sendto(notion.sock, "irc_hint: important\n", 20, MSG_DONTWAIT,
                 (const struct sockaddr *) &(notion.addr),
                 sizeof (notion.addr));
     else
-        sendto(notion.sock, "irc_hint: normal\n", 17, 0,
+        ret = sendto(notion.sock, "irc_hint: normal\n", 17, MSG_DONTWAIT,
                 (const struct sockaddr *) &(notion.addr),
                 sizeof (notion.addr));
+    if (ret < 0)
+        weechat_printf(NULL, "%snotion: %s(%i)", weechat_prefix("error"),
+                strerror(errno), errno);
 }
 
 static int hotlist_changed_cb(void *data,
